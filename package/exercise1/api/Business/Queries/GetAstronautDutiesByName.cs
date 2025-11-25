@@ -36,7 +36,18 @@ namespace StargateAPI.Business.Queries
 
             if (personData == null)
             {
-                return result; // Return empty result if person not found
+                result.Success = false;
+                result.Message = "Person not found";
+                result.ResponseCode = 404;
+                return result;
+            }
+
+            if (personData.AstronautDetail == null)
+            {
+                result.Success = false;
+                result.Message = "Astronaut details not found for person";
+                result.ResponseCode = 404;
+                return result;
             }
 
             // Map to DTO

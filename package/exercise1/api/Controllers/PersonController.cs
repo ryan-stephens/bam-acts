@@ -2,19 +2,23 @@
 using Microsoft.AspNetCore.Mvc;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Queries;
+using StargateAPI.Business.Services;
 using System.Net;
 
 namespace StargateAPI.Controllers
 {
-   
+
     [ApiController]
     [Route("[controller]")]
     public class PersonController : ControllerBase
     {
         private readonly IMediator _mediator;
-        public PersonController(IMediator mediator)
+        private readonly IProcessLogService _logService;
+
+        public PersonController(IMediator mediator, IProcessLogService logService)
         {
             _mediator = mediator;
+            _logService = logService;
         }
 
         [HttpGet("")]
@@ -27,10 +31,21 @@ namespace StargateAPI.Controllers
 
                 });
 
+                await _logService.LogSuccessAsync(
+                    "Successfully retrieved all people",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(result);
             }
             catch (Exception ex)
             {
+                await _logService.LogExceptionAsync(
+                    ex,
+                    "Failed to retrieve people",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(new BaseResponse()
                 {
                     Message = ex.Message,
@@ -50,10 +65,21 @@ namespace StargateAPI.Controllers
                     Name = name
                 });
 
+                await _logService.LogSuccessAsync(
+                    $"Successfully retrieved person: {name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(result);
             }
             catch (Exception ex)
             {
+                await _logService.LogExceptionAsync(
+                    ex,
+                    $"Failed to retrieve person: {name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(new BaseResponse()
                 {
                     Message = ex.Message,
@@ -73,10 +99,21 @@ namespace StargateAPI.Controllers
                     Name = name
                 });
 
+                await _logService.LogSuccessAsync(
+                    $"Successfully created person: {name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(result);
             }
             catch (Exception ex)
             {
+                await _logService.LogExceptionAsync(
+                    ex,
+                    $"Failed to create person: {name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(new BaseResponse()
                 {
                     Message = ex.Message,

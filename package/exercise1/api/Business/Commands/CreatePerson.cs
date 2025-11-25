@@ -20,9 +20,13 @@ namespace StargateAPI.Business.Commands
         }
         public Task Process(CreatePerson request, CancellationToken cancellationToken)
         {
+            // Rule 1: A Person is uniquely identified by their Name
             var person = _context.People.AsNoTracking().FirstOrDefault(z => z.Name == request.Name);
 
-            if (person is not null) throw new BadHttpRequestException("Bad Request");
+            if (person is not null)
+            {
+                throw new BadHttpRequestException($"Person with name '{request.Name}' already exists. Person names must be unique.");
+            }
 
             return Task.CompletedTask;
         }

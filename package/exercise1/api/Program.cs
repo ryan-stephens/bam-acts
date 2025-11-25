@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Data;
+using StargateAPI.Business.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,12 +11,16 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddDbContext<StargateContext>(options => 
+builder.Services.AddDbContext<StargateContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("StarbaseApiDatabase")));
+
+// Register logging service
+builder.Services.AddScoped<IProcessLogService, ProcessLogService>();
 
 builder.Services.AddMediatR(cfg =>
 {
     cfg.AddRequestPreProcessor<CreateAstronautDutyPreProcessor>();
+    cfg.AddRequestPreProcessor<CreatePersonPreProcessor>();
     cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly);
 });
 
@@ -26,6 +31,30 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<StargateContext>();
     db.Database.Migrate();
+
+    // Manually create unique index on Person.Name if it doesn't exist (Rule 1)
+    var connection = db.Database.GetDbConnection();
+    connection.Open();
+    using (var command = connection.CreateCommand())
+    {
+        command.CommandText = @"
+            CREATE UNIQUE INDEX IF NOT EXISTS IX_Person_Name
+            ON Person (Name);
+
+            CREATE TABLE IF NOT EXISTS ProcessLog (
+                Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                Timestamp TEXT NOT NULL,
+                LogLevel TEXT NOT NULL,
+                Message TEXT NOT NULL,
+                ExceptionDetails TEXT NULL,
+                StackTrace TEXT NULL,
+                RequestPath TEXT NULL,
+                RequestMethod TEXT NULL
+            );
+        ";
+        command.ExecuteNonQuery();
+    }
+    connection.Close();
 
     // Seed initial data if database is empty
     if (!db.People.Any())

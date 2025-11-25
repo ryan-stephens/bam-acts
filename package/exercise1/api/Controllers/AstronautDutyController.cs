@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Queries;
+using StargateAPI.Business.Services;
 using System.Net;
 
 namespace StargateAPI.Controllers
@@ -11,9 +12,12 @@ namespace StargateAPI.Controllers
     public class AstronautDutyController : ControllerBase
     {
         private readonly IMediator _mediator;
-        public AstronautDutyController(IMediator mediator)
+        private readonly IProcessLogService _logService;
+
+        public AstronautDutyController(IMediator mediator, IProcessLogService logService)
         {
             _mediator = mediator;
+            _logService = logService;
         }
 
         [HttpGet("{name}")]
@@ -26,10 +30,21 @@ namespace StargateAPI.Controllers
                     Name = name
                 });
 
+                await _logService.LogSuccessAsync(
+                    $"Successfully retrieved astronaut duties for: {name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(result);
             }
             catch (Exception ex)
             {
+                await _logService.LogExceptionAsync(
+                    ex,
+                    $"Failed to retrieve astronaut duties for: {name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
                 return this.GetResponse(new BaseResponse()
                 {
                     Message = ex.Message,
@@ -42,8 +57,32 @@ namespace StargateAPI.Controllers
         [HttpPost("")]
         public async Task<IActionResult> CreateAstronautDuty([FromBody] CreateAstronautDuty request)
         {
+            try
+            {
                 var result = await _mediator.Send(request);
-                return this.GetResponse(result);           
+
+                await _logService.LogSuccessAsync(
+                    $"Successfully created astronaut duty for: {request.Name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
+                return this.GetResponse(result);
+            }
+            catch (Exception ex)
+            {
+                await _logService.LogExceptionAsync(
+                    ex,
+                    $"Failed to create astronaut duty for: {request.Name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
+                return this.GetResponse(new BaseResponse()
+                {
+                    Message = ex.Message,
+                    Success = false,
+                    ResponseCode = (int)HttpStatusCode.InternalServerError
+                });
+            }
         }
     }
 }
