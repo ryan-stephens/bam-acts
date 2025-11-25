@@ -21,6 +21,42 @@ builder.Services.AddMediatR(cfg =>
 
 var app = builder.Build();
 
+// Ensure database is created and migrations are applied
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<StargateContext>();
+    db.Database.Migrate();
+
+    // Seed initial data if database is empty
+    if (!db.People.Any())
+    {
+        var person1 = new Person { Name = "John Doe" };
+        var person2 = new Person { Name = "Jane Doe" };
+        db.People.AddRange(person1, person2);
+        db.SaveChanges();
+
+        var astronautDetail = new AstronautDetail
+        {
+            PersonId = person1.Id,
+            CurrentRank = "1LT",
+            CurrentDutyTitle = "Commander",
+            CareerStartDate = DateTime.Now
+        };
+        db.AstronautDetails.Add(astronautDetail);
+
+        var astronautDuty = new AstronautDuty
+        {
+            PersonId = person1.Id,
+            DutyStartDate = DateTime.Now,
+            DutyTitle = "Commander",
+            Rank = "1LT"
+        };
+        db.AstronautDuties.Add(astronautDuty);
+
+        db.SaveChanges();
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

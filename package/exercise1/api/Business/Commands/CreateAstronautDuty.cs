@@ -1,5 +1,4 @@
-﻿using Dapper;
-using MediatR;
+﻿using MediatR;
 using MediatR.Pipeline;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
@@ -52,14 +51,18 @@ namespace StargateAPI.Business.Commands
         }
         public async Task<CreateAstronautDutyResult> Handle(CreateAstronautDuty request, CancellationToken cancellationToken)
         {
+            // Use EF Core LINQ instead of raw SQL to prevent SQL injection
+            var person = await _context.People
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Name == request.Name, cancellationToken);
 
-            var query = $"SELECT * FROM [Person] WHERE \'{request.Name}\' = Name";
+            if (person == null)
+            {
+                throw new BadHttpRequestException("Person not found");
+            }
 
-            var person = await _context.Connection.QueryFirstOrDefaultAsync<Person>(query);
-
-            query = $"SELECT * FROM [AstronautDetail] WHERE {person.Id} = PersonId";
-
-            var astronautDetail = await _context.Connection.QueryFirstOrDefaultAsync<AstronautDetail>(query);
+            var astronautDetail = await _context.AstronautDetails
+                .FirstOrDefaultAsync(ad => ad.PersonId == person.Id, cancellationToken);
 
             if (astronautDetail == null)
             {
@@ -87,9 +90,11 @@ namespace StargateAPI.Business.Commands
                 _context.AstronautDetails.Update(astronautDetail);
             }
 
-            query = $"SELECT * FROM [AstronautDuty] WHERE {person.Id} = PersonId Order By DutyStartDate Desc";
-
-            var astronautDuty = await _context.Connection.QueryFirstOrDefaultAsync<AstronautDuty>(query);
+            // Use EF Core LINQ to get the most recent duty
+            var astronautDuty = await _context.AstronautDuties
+                .Where(ad => ad.PersonId == person.Id)
+                .OrderByDescending(ad => ad.DutyStartDate)
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (astronautDuty != null)
             {
