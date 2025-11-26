@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Client, AstronautDuty, PersonAstronaut, CreateAstronautDuty, UpdateAstronautDuty, GetPeopleResult, GetAstronautDutiesByNameResult, BaseResponse } from '../../../services/api-client';
+import { Client, AstronautDutyDto, PersonAstronaut, CreateAstronautDuty, UpdateAstronautDuty, GetPeopleResult, GetAstronautDutiesByNameResult, BaseResponse } from '../../../services/api-client';
 
 @Component({
   selector: 'app-astronaut-search',
@@ -18,7 +18,7 @@ export class AstronautSearchComponent implements OnInit {
   filteredPeople = signal<PersonAstronaut[]>([]);
   searchQuery = signal('');
   expandedPersonId = signal<number | null>(null);
-  personDuties = signal<Map<number, AstronautDuty[]>>(new Map());
+  personDuties = signal<Map<number, AstronautDutyDto[]>>(new Map());
   isLoading = signal(false);
   isLoadingDuties = signal(false);
   errorMessage = signal('');
@@ -37,7 +37,7 @@ export class AstronautSearchComponent implements OnInit {
   isCreatingDuty = signal(false);
 
   showEditDutyModal = signal(false);
-  selectedDutyForEdit = signal<AstronautDuty | null>(null);
+  selectedDutyForEdit = signal<AstronautDutyDto | null>(null);
   editDutyForm = signal({
     rank: '',
     dutyTitle: '',
@@ -146,7 +146,7 @@ export class AstronautSearchComponent implements OnInit {
     return this.expandedPersonId() === personId;
   }
 
-  getDutiesForPerson(personId: number | undefined): AstronautDuty[] {
+  getDutiesForPerson(personId: number | undefined): AstronautDutyDto[] {
     if (!personId) return [];
     return this.personDuties().get(personId) || [];
   }
@@ -273,7 +273,7 @@ export class AstronautSearchComponent implements OnInit {
     });
   }
 
-  openEditDutyModal(duty: AstronautDuty, event: Event): void {
+  openEditDutyModal(duty: AstronautDutyDto, event: Event): void {
     event.stopPropagation();
     this.selectedDutyForEdit.set(duty);
     this.showEditDutyModal.set(true);

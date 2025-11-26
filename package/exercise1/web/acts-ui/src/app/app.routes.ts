@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { AstronautSearchComponent } from './shared/components';
+import { AstronautSearchComponent } from './features/components';
 
 export const routes: Routes = [
   {
