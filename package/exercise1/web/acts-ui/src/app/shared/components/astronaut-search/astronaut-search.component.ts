@@ -85,7 +85,7 @@ export class AstronautSearchComponent implements OnInit {
         (a.name || '').localeCompare(b.name || '')
       );
       this.filteredPeople.set(sorted);
-      this.successMessage.set(`Showing all ${this.allPeople().length} astronaut(s)`);
+      this.successMessage.set('');
     } else {
       const filtered = this.allPeople().filter(person =>
         person.name?.toLowerCase().includes(query)
@@ -94,7 +94,7 @@ export class AstronautSearchComponent implements OnInit {
         (a.name || '').localeCompare(b.name || '')
       );
       this.filteredPeople.set(sorted);
-      this.successMessage.set(`Found ${filtered.length} matching astronaut(s)`);
+      this.successMessage.set('');
     }
   }
 

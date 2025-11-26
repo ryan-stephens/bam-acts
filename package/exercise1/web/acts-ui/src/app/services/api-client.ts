@@ -42,6 +42,11 @@ export interface IClient {
      * @return Success
      */
     createPerson(body: string | undefined): Observable<BaseResponse>;
+    /**
+     * @param body (optional) 
+     * @return Success
+     */
+    updatePerson(currentName: string, body: string | undefined): Observable<UpdatePersonResult>;
 }
 
 @Injectable()
@@ -454,78 +459,97 @@ export class Client implements IClient {
         }
         return _observableOf(null as any);
     }
-}
 
-export class AstronautDetail implements IAstronautDetail {
-    id?: number;
-    personId?: number;
-    currentRank?: string | undefined;
-    currentDutyTitle?: string | undefined;
-    careerStartDate?: Date;
-    careerEndDate?: Date | undefined;
-    person?: Person;
+    /**
+     * @param body (optional) 
+     * @return Success
+     */
+    updatePerson(currentName: string, body: string | undefined): Observable<UpdatePersonResult> {
+        let url_ = this.baseUrl + "/Person/{currentName}";
+        if (currentName === undefined || currentName === null)
+            throw new globalThis.Error("The parameter 'currentName' must be defined.");
+        url_ = url_.replace("{currentName}", encodeURIComponent("" + currentName));
+        url_ = url_.replace(/[?&]$/, "");
 
-    constructor(data?: IAstronautDetail) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
+        const content_ = JSON.stringify(body);
+
+        let options_ : any = {
+            body: content_,
+            observe: "response",
+            responseType: "blob",
+            headers: new HttpHeaders({
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            })
+        };
+
+        return this.http.request("put", url_, options_).pipe(_observableMergeMap((response_ : any) => {
+            return this.processUpdatePerson(response_);
+        })).pipe(_observableCatch((response_: any) => {
+            if (response_ instanceof HttpResponseBase) {
+                try {
+                    return this.processUpdatePerson(response_ as any);
+                } catch (e) {
+                    return _observableThrow(e) as any as Observable<UpdatePersonResult>;
+                }
+            } else
+                return _observableThrow(response_) as any as Observable<UpdatePersonResult>;
+        }));
+    }
+
+    protected processUpdatePerson(response: HttpResponseBase): Observable<UpdatePersonResult> {
+        const status = response.status;
+        const responseBlob =
+            response instanceof HttpResponse ? response.body :
+            (response as any).error instanceof Blob ? (response as any).error : undefined;
+
+        let _headers: any = {}; if (response.headers) { for (let key of response.headers.keys()) { _headers[key] = response.headers.get(key); }}
+        if (status === 200) {
+            return blobToText(responseBlob).pipe(_observableMergeMap((_responseText: string) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = UpdatePersonResult.fromJS(resultData200);
+            return _observableOf(result200);
+            }));
+        } else if (status === 400) {
+            return blobToText(responseBlob).pipe(_observableMergeMap((_responseText: string) => {
+            let result400: any = null;
+            let resultData400 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result400 = BaseResponse.fromJS(resultData400);
+            return throwException("Bad Request", status, _responseText, _headers, result400);
+            }));
+        } else if (status === 404) {
+            return blobToText(responseBlob).pipe(_observableMergeMap((_responseText: string) => {
+            let result404: any = null;
+            let resultData404 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result404 = BaseResponse.fromJS(resultData404);
+            return throwException("Not Found", status, _responseText, _headers, result404);
+            }));
+        } else if (status === 500) {
+            return blobToText(responseBlob).pipe(_observableMergeMap((_responseText: string) => {
+            let result500: any = null;
+            let resultData500 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result500 = BaseResponse.fromJS(resultData500);
+            return throwException("Server Error", status, _responseText, _headers, result500);
+            }));
+        } else if (status !== 200 && status !== 204) {
+            return blobToText(responseBlob).pipe(_observableMergeMap((_responseText: string) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            }));
         }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.personId = _data["personId"];
-            this.currentRank = _data["currentRank"];
-            this.currentDutyTitle = _data["currentDutyTitle"];
-            this.careerStartDate = _data["careerStartDate"] ? new Date(_data["careerStartDate"].toString()) : undefined as any;
-            this.careerEndDate = _data["careerEndDate"] ? new Date(_data["careerEndDate"].toString()) : undefined as any;
-            this.person = _data["person"] ? Person.fromJS(_data["person"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): AstronautDetail {
-        data = typeof data === 'object' ? data : {};
-        let result = new AstronautDetail();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["personId"] = this.personId;
-        data["currentRank"] = this.currentRank;
-        data["currentDutyTitle"] = this.currentDutyTitle;
-        data["careerStartDate"] = this.careerStartDate ? this.careerStartDate.toISOString() : undefined as any;
-        data["careerEndDate"] = this.careerEndDate ? this.careerEndDate.toISOString() : undefined as any;
-        data["person"] = this.person ? this.person.toJSON() : undefined as any;
-        return data;
+        return _observableOf(null as any);
     }
 }
 
-export interface IAstronautDetail {
-    id?: number;
-    personId?: number;
-    currentRank?: string | undefined;
-    currentDutyTitle?: string | undefined;
-    careerStartDate?: Date;
-    careerEndDate?: Date | undefined;
-    person?: Person;
-}
-
-export class AstronautDuty implements IAstronautDuty {
+export class AstronautDutyDto implements IAstronautDutyDto {
     id?: number;
     personId?: number;
     rank?: string | undefined;
     dutyTitle?: string | undefined;
     dutyStartDate?: Date;
     dutyEndDate?: Date | undefined;
-    person?: Person;
 
-    constructor(data?: IAstronautDuty) {
+    constructor(data?: IAstronautDutyDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -542,13 +566,12 @@ export class AstronautDuty implements IAstronautDuty {
             this.dutyTitle = _data["dutyTitle"];
             this.dutyStartDate = _data["dutyStartDate"] ? new Date(_data["dutyStartDate"].toString()) : undefined as any;
             this.dutyEndDate = _data["dutyEndDate"] ? new Date(_data["dutyEndDate"].toString()) : undefined as any;
-            this.person = _data["person"] ? Person.fromJS(_data["person"]) : undefined as any;
         }
     }
 
-    static fromJS(data: any): AstronautDuty {
+    static fromJS(data: any): AstronautDutyDto {
         data = typeof data === 'object' ? data : {};
-        let result = new AstronautDuty();
+        let result = new AstronautDutyDto();
         result.init(data);
         return result;
     }
@@ -561,19 +584,17 @@ export class AstronautDuty implements IAstronautDuty {
         data["dutyTitle"] = this.dutyTitle;
         data["dutyStartDate"] = this.dutyStartDate ? this.dutyStartDate.toISOString() : undefined as any;
         data["dutyEndDate"] = this.dutyEndDate ? this.dutyEndDate.toISOString() : undefined as any;
-        data["person"] = this.person ? this.person.toJSON() : undefined as any;
         return data;
     }
 }
 
-export interface IAstronautDuty {
+export interface IAstronautDutyDto {
     id?: number;
     personId?: number;
     rank?: string | undefined;
     dutyTitle?: string | undefined;
     dutyStartDate?: Date;
     dutyEndDate?: Date | undefined;
-    person?: Person;
 }
 
 export class BaseResponse implements IBaseResponse {
@@ -721,7 +742,7 @@ export class GetAstronautDutiesByNameResult implements IGetAstronautDutiesByName
     message?: string | undefined;
     responseCode?: number;
     person?: PersonAstronaut;
-    astronautDuties?: AstronautDuty[] | undefined;
+    astronautDuties?: AstronautDutyDto[] | undefined;
 
     constructor(data?: IGetAstronautDutiesByNameResult) {
         if (data) {
@@ -741,7 +762,7 @@ export class GetAstronautDutiesByNameResult implements IGetAstronautDutiesByName
             if (Array.isArray(_data["astronautDuties"])) {
                 this.astronautDuties = [] as any;
                 for (let item of _data["astronautDuties"])
-                    this.astronautDuties!.push(AstronautDuty.fromJS(item));
+                    this.astronautDuties!.push(AstronautDutyDto.fromJS(item));
             }
         }
     }
@@ -773,7 +794,7 @@ export interface IGetAstronautDutiesByNameResult {
     message?: string | undefined;
     responseCode?: number;
     person?: PersonAstronaut;
-    astronautDuties?: AstronautDuty[] | undefined;
+    astronautDuties?: AstronautDutyDto[] | undefined;
 }
 
 export class GetPeopleResult implements IGetPeopleResult {
@@ -878,62 +899,6 @@ export interface IGetPersonByNameResult {
     message?: string | undefined;
     responseCode?: number;
     person?: PersonAstronaut;
-}
-
-export class Person implements IPerson {
-    id?: number;
-    name?: string | undefined;
-    astronautDetail?: AstronautDetail;
-    astronautDuties?: AstronautDuty[] | undefined;
-
-    constructor(data?: IPerson) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.name = _data["name"];
-            this.astronautDetail = _data["astronautDetail"] ? AstronautDetail.fromJS(_data["astronautDetail"]) : undefined as any;
-            if (Array.isArray(_data["astronautDuties"])) {
-                this.astronautDuties = [] as any;
-                for (let item of _data["astronautDuties"])
-                    this.astronautDuties!.push(AstronautDuty.fromJS(item));
-            }
-        }
-    }
-
-    static fromJS(data: any): Person {
-        data = typeof data === 'object' ? data : {};
-        let result = new Person();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["name"] = this.name;
-        data["astronautDetail"] = this.astronautDetail ? this.astronautDetail.toJSON() : undefined as any;
-        if (Array.isArray(this.astronautDuties)) {
-            data["astronautDuties"] = [];
-            for (let item of this.astronautDuties)
-                data["astronautDuties"].push(item ? item.toJSON() : undefined as any);
-        }
-        return data;
-    }
-}
-
-export interface IPerson {
-    id?: number;
-    name?: string | undefined;
-    astronautDetail?: AstronautDetail;
-    astronautDuties?: AstronautDuty[] | undefined;
 }
 
 export class PersonAstronaut implements IPersonAstronaut {
@@ -1042,6 +1007,58 @@ export interface IUpdateAstronautDuty {
     dutyTitle?: string | undefined;
     dutyStartDate?: Date;
     dutyEndDate?: Date | undefined;
+}
+
+export class UpdatePersonResult implements IUpdatePersonResult {
+    success?: boolean;
+    message?: string | undefined;
+    responseCode?: number;
+    id?: number;
+    newName?: string | undefined;
+
+    constructor(data?: IUpdatePersonResult) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.success = _data["success"];
+            this.message = _data["message"];
+            this.responseCode = _data["responseCode"];
+            this.id = _data["id"];
+            this.newName = _data["newName"];
+        }
+    }
+
+    static fromJS(data: any): UpdatePersonResult {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdatePersonResult();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["success"] = this.success;
+        data["message"] = this.message;
+        data["responseCode"] = this.responseCode;
+        data["id"] = this.id;
+        data["newName"] = this.newName;
+        return data;
+    }
+}
+
+export interface IUpdatePersonResult {
+    success?: boolean;
+    message?: string | undefined;
+    responseCode?: number;
+    id?: number;
+    newName?: string | undefined;
 }
 
 export class SwaggerException extends Error {

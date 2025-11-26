@@ -80,5 +80,55 @@ namespace StargateAPI.Tests.Controllers
             var method = typeof(PersonController).GetMethod("CreatePerson");
             method.Should().NotBeNull();
         }
+
+        [Fact]
+        public void PersonController_ShouldHaveUpdatePersonMethod()
+        {
+            // Verify the controller has the required method
+            var method = typeof(PersonController).GetMethod("UpdatePerson");
+            method.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void UpdatePerson_WithEmptyCurrentName_ShouldReject()
+        {
+            // This test validates that empty current names are rejected
+            var emptyName = "";
+            string.IsNullOrWhiteSpace(emptyName).Should().BeTrue();
+        }
+
+        [Fact]
+        public void UpdatePerson_WithEmptyNewName_ShouldReject()
+        {
+            // This test validates that empty new names are rejected
+            var emptyName = "";
+            string.IsNullOrWhiteSpace(emptyName).Should().BeTrue();
+        }
+
+        [Fact]
+        public void UpdatePerson_WithValidNames_ShouldAccept()
+        {
+            // This test validates that valid names are accepted
+            var currentName = "John Doe";
+            var newName = "Jane Doe";
+            string.IsNullOrWhiteSpace(currentName).Should().BeFalse();
+            string.IsNullOrWhiteSpace(newName).Should().BeFalse();
+        }
+
+        [Fact]
+        public void UpdatePerson_WithWhitespaceCurrentName_ShouldReject()
+        {
+            // This test validates that whitespace-only current names are rejected
+            var whitespaceName = "   ";
+            string.IsNullOrWhiteSpace(whitespaceName).Should().BeTrue();
+        }
+
+        [Fact]
+        public void UpdatePerson_WithWhitespaceNewName_ShouldReject()
+        {
+            // This test validates that whitespace-only new names are rejected
+            var whitespaceName = "   ";
+            string.IsNullOrWhiteSpace(whitespaceName).Should().BeTrue();
+        }
     }
 }

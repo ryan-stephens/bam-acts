@@ -130,5 +130,44 @@ namespace StargateAPI.Controllers
             }
 
         }
+
+        [HttpPut("{currentName}", Name = "UpdatePerson")]
+        [ProducesResponseType(typeof(UpdatePersonResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdatePerson(string currentName, [FromBody] string newName)
+        {
+            try
+            {
+                var result = await _mediator.Send(new UpdatePerson()
+                {
+                    CurrentName = currentName,
+                    NewName = newName
+                });
+
+                await _logService.LogSuccessAsync(
+                    $"Successfully updated person from '{currentName}' to '{newName}'",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
+                return this.GetResponse(result);
+            }
+            catch (Exception ex)
+            {
+                await _logService.LogExceptionAsync(
+                    ex,
+                    $"Failed to update person: {currentName}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
+                return this.GetResponse(new BaseResponse()
+                {
+                    Message = ex.Message,
+                    Success = false,
+                    ResponseCode = (int)HttpStatusCode.InternalServerError
+                });
+            }
+        }
     }
 }
