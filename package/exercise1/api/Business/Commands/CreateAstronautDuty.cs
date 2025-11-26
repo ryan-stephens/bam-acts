@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using MediatR.Pipeline;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
@@ -37,28 +37,31 @@ namespace StargateAPI.Business.Commands
                 throw new BadHttpRequestException($"Person with name '{request.Name}' does not exist. Cannot create astronaut duty for non-existent person.");
             }
 
-            // Rule 3: An astronaut can only have one current duty at a time (duty with no end date)
+            // Rule 3: An astronaut can only have one current duty at a time
+            // Exception: RETIRED duties are allowed to replace the current duty
             var currentDuty = _context.AstronautDuties
-                .FirstOrDefault(z => z.PersonId == person.Id && z.DutyEndDate == null);
+                .Where(z => z.PersonId == person.Id && z.DutyEndDate == null)
+                .FirstOrDefault();
 
-            if (currentDuty is not null)
+            if (currentDuty != null && request.DutyTitle != "RETIRED")
             {
                 throw new BadHttpRequestException($"Astronaut '{request.Name}' already has a current duty. Cannot assign multiple current duties.");
             }
 
-            // Rule 5: A new duty cannot start before the previous duty ends
-            // Get the most recent duty (by start date)
-            var previousDuty = _context.AstronautDuties
+            // Rule 5: Validate that new duty start date is after the most recent duty's end date
+            // Note: The handler will automatically close the previous duty by setting its end date
+            // to one day before the new duty's start date (Rule #5)
+            var mostRecentDuty = _context.AstronautDuties
                 .Where(z => z.PersonId == person.Id)
                 .OrderByDescending(z => z.DutyStartDate)
                 .FirstOrDefault();
 
-            if (previousDuty != null && previousDuty.DutyEndDate.HasValue)
+            if (mostRecentDuty != null && mostRecentDuty.DutyEndDate.HasValue)
             {
-                // New duty must start AFTER the previous duty end date (next day)
-                if (request.DutyStartDate <= previousDuty.DutyEndDate.Value)
+                // New duty must start AFTER the most recent duty's end date
+                if (request.DutyStartDate <= mostRecentDuty.DutyEndDate.Value)
                 {
-                    throw new BadHttpRequestException($"New duty start date ({request.DutyStartDate}) must be after the previous duty end date ({previousDuty.DutyEndDate.Value}).");
+                    throw new BadHttpRequestException($"New duty start date ({request.DutyStartDate:M/d/yyyy h:mm:ss tt}) must be after the previous duty end date ({mostRecentDuty.DutyEndDate.Value:M/d/yyyy h:mm:ss tt}).");
                 }
             }
 
@@ -120,6 +123,11 @@ namespace StargateAPI.Business.Commands
                 {
                     astronautDetail.CareerEndDate = request.DutyStartDate.AddDays(-1).Date;
                 }
+                else if (astronautDetail.CareerEndDate.HasValue)
+                {
+                    // If changing from RETIRED to something else, clear career end date
+                    astronautDetail.CareerEndDate = null;
+                }
                 _context.AstronautDetails.Update(astronautDetail);
             }
 
@@ -137,13 +145,15 @@ namespace StargateAPI.Business.Commands
             }
 
             // Rule 4: A Person's Current Duty will not have a Duty End Date
+            // Rule 6: Person is classified as 'Retired' when Duty Title is 'RETIRED'
+            // RETIRED duties should have an end date set to the start date (they are not current)
             var newAstronautDuty = new AstronautDuty()
             {
                 PersonId = person.Id,
                 Rank = request.Rank,
                 DutyTitle = request.DutyTitle,
                 DutyStartDate = request.DutyStartDate.Date,
-                DutyEndDate = null  // Current duty has no end date
+                DutyEndDate = request.DutyTitle == "RETIRED" ? request.DutyStartDate.Date : null
             };
 
             await _context.AstronautDuties.AddAsync(newAstronautDuty);

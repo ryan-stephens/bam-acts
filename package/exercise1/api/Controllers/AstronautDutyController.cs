@@ -20,7 +20,10 @@ namespace StargateAPI.Controllers
             _logService = logService;
         }
 
-        [HttpGet("{name}")]
+        [HttpGet("{name}", Name = "GetAstronautDutiesByName")]
+        [ProducesResponseType(typeof(GetAstronautDutiesByNameResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetAstronautDutiesByName(string name)
         {
             try
@@ -54,7 +57,10 @@ namespace StargateAPI.Controllers
             }
         }
 
-        [HttpPost("")]
+        [HttpPost("", Name = "CreateAstronautDuty")]
+        [ProducesResponseType(typeof(CreateAstronautDutyResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreateAstronautDuty([FromBody] CreateAstronautDuty request)
         {
             try
@@ -73,6 +79,41 @@ namespace StargateAPI.Controllers
                 await _logService.LogExceptionAsync(
                     ex,
                     $"Failed to create astronaut duty for: {request.Name}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
+                return this.GetResponse(new BaseResponse()
+                {
+                    Message = ex.Message,
+                    Success = false,
+                    ResponseCode = (int)HttpStatusCode.InternalServerError
+                });
+            }
+        }
+
+        [HttpPut("{id}", Name = "UpdateAstronautDuty")]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> UpdateAstronautDuty(int id, [FromBody] UpdateAstronautDuty request)
+        {
+            try
+            {
+                request.Id = id;
+                var result = await _mediator.Send(request);
+
+                await _logService.LogSuccessAsync(
+                    $"Successfully updated astronaut duty ID: {id}",
+                    HttpContext.Request.Path,
+                    HttpContext.Request.Method);
+
+                return this.GetResponse(result);
+            }
+            catch (Exception ex)
+            {
+                await _logService.LogExceptionAsync(
+                    ex,
+                    $"Failed to update astronaut duty ID: {id}",
                     HttpContext.Request.Path,
                     HttpContext.Request.Method);
 

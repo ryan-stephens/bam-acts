@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using StargateAPI.Business.Commands;
 using StargateAPI.Business.Queries;
@@ -21,7 +21,9 @@ namespace StargateAPI.Controllers
             _logService = logService;
         }
 
-        [HttpGet("")]
+        [HttpGet("all", Name = "GetAllPeople")]
+        [ProducesResponseType(typeof(GetPeopleResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetPeople()
         {
             try
@@ -55,7 +57,10 @@ namespace StargateAPI.Controllers
             }
         }
 
-        [HttpGet("{name}")]
+        [HttpGet("{name}", Name = "GetPersonByName")]
+        [ProducesResponseType(typeof(GetPersonByNameResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetPersonByName(string name)
         {
             try
@@ -89,7 +94,9 @@ namespace StargateAPI.Controllers
             }
         }
 
-        [HttpPost("")]
+        [HttpPost("", Name = "CreatePerson")]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(BaseResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CreatePerson([FromBody] string name)
         {
             try

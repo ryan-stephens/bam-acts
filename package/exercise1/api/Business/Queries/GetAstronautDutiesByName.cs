@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using StargateAPI.Business.Data;
 using StargateAPI.Business.Dtos;
@@ -67,7 +67,7 @@ namespace StargateAPI.Business.Queries
                 .AsNoTracking()
                 .Where(ad => ad.PersonId == personData.Person.Id)
                 .OrderByDescending(ad => ad.DutyStartDate)
-                .Select(ad => new AstronautDuty
+                .Select(ad => new AstronautDutyDto
                 {
                     Id = ad.Id,
                     PersonId = ad.PersonId,
@@ -85,6 +85,6 @@ namespace StargateAPI.Business.Queries
     public class GetAstronautDutiesByNameResult : BaseResponse
     {
         public PersonAstronaut Person { get; set; }
-        public List<AstronautDuty> AstronautDuties { get; set; } = new List<AstronautDuty>();
+        public List<AstronautDutyDto> AstronautDuties { get; set; } = new List<AstronautDutyDto>();
     }
 }

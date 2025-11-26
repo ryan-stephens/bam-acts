@@ -1,0 +1,421 @@
+<div class="w-full">
+  <!-- Header and Search -->
+  <div class="bg-white rounded-lg border border-slate-200 p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold text-slate-900">Astronaut Career Tracking System</h3>
+      <div class="flex gap-2">
+        <button
+          (click)="openCreatePersonModal()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          + Create Person
+        </button>
+        <button
+          (click)="loadAllPeople()"
+          [disabled]="isLoading()"
+          class="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          @if (isLoading()) {
+            <span>Loading...</span>
+          } @else {
+            <span>Refresh</span>
+          }
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="mb-4">
+      <label for="search" class="text-sm font-medium text-slate-900 mb-2 block">
+        Search Astronauts
+      </label>
+      <div class="flex gap-2">
+        <input
+          id="search"
+          type="text"
+          placeholder="Enter name to search..."
+          [value]="searchQuery()"
+          (input)="onSearchChange($any($event.target).value)"
+          class="flex-1 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+        />
+        @if (searchQuery()) {
+          <button
+            (click)="clearSearch()"
+            class="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50"
+          >
+            Clear
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (errorMessage()) {
+      <div class="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+        {{ errorMessage() }}
+      </div>
+    }
+
+    @if (successMessage()) {
+      <div class="p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+        {{ successMessage() }}
+      </div>
+    }
+  </div>
+
+  <!-- Results -->
+  @if (filteredPeople().length > 0) {
+    <div class="space-y-3">
+      @for (person of filteredPeople(); track person.personId) {
+        <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+          <!-- Person Header (Clickable) -->
+          <button
+            (click)="togglePerson(person)"
+            class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition text-left"
+          >
+            <div class="flex-1">
+              <div class="flex items-center gap-3">
+                <h4 class="font-semibold text-slate-900">{{ person.name }}</h4>
+                @if (person.currentRank) {
+                  <span class="text-sm text-slate-600">{{ person.currentRank }}</span>
+                }
+                @if (person.currentDutyTitle) {
+                  <span class="text-sm text-slate-600">• {{ person.currentDutyTitle }}</span>
+                }
+              </div>
+              <div class="flex items-center gap-4 mt-1 text-xs text-slate-500">
+                @if (person.careerStartDate) {
+                  <span>Career Start: {{ formatDate(person.careerStartDate) }}</span>
+                }
+                @if (person.careerEndDate) {
+                  <span>Career End: {{ formatDate(person.careerEndDate) }}</span>
+                }
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              @if (person.careerEndDate) {
+                <span class="px-3 py-1 bg-slate-600 text-white text-xs font-medium rounded-full">Retired</span>
+              } @else {
+                <span class="px-3 py-1 bg-green-600 text-white text-xs font-medium rounded-full">Active</span>
+              }
+              <svg
+                class="w-5 h-5 text-slate-400 transition-transform"
+                [class.rotate-180]="isExpanded(person.personId)"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </button>
+
+          <!-- Expandable Duty History Table -->
+          @if (isExpanded(person.personId)) {
+            <div class="border-t border-slate-200 bg-slate-50">
+              <!-- Add Duty Button -->
+              <div class="px-6 py-3 border-b border-slate-200 bg-slate-100 flex justify-between items-center">
+                <span class="text-xs font-semibold text-slate-700 uppercase">Duty History</span>
+                <button
+                  (click)="openCreateDutyModal(person, $event)"
+                  class="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
+                >
+                  + Add Duty
+                </button>
+              </div>
+
+              @if (isLoadingDuties()) {
+                <div class="px-6 py-8 text-center text-slate-500">
+                  <p>Loading duty history...</p>
+                </div>
+              } @else {
+                @if (getDutiesForPerson(person.personId).length > 0) {
+                  <div class="overflow-x-auto">
+                    <table class="w-full">
+                      <thead class="bg-slate-100 border-b border-slate-200">
+                        <tr>
+                          <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Rank</th>
+                          <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Title</th>
+                          <th class="px-6 py-3 text-center text-xs font-semibold text-slate-700 uppercase">Status</th>
+                          <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase">Start Date</th>
+                          <th class="px-6 py-3 text-left text-xs font-semibold text-slate-700 uppercase">End Date</th>
+                          <th class="px-6 py-3 text-center text-xs font-semibold text-slate-700 uppercase">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white">
+                        @for (duty of getDutiesForPerson(person.personId); track duty.id) {
+                          <tr class="border-b border-slate-200 hover:bg-slate-50 transition">
+                            <td class="px-6 py-3 text-sm text-slate-600">{{ duty.rank }}</td>
+                            <td class="px-6 py-3 text-sm text-slate-900">{{ duty.dutyTitle }}</td>
+                            <td class="px-6 py-3 text-center">
+                              @if (duty.dutyTitle === 'RETIRED') {
+                                <span class="px-2 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">Retired</span>
+                              } @else if (!duty.dutyEndDate) {
+                                <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">Current</span>
+                              } @else {
+                                <span class="px-2 py-1 bg-slate-100 text-slate-700 text-xs font-medium rounded-full">Previous</span>
+                              }
+                            </td>
+                            <td class="px-6 py-3 text-sm text-slate-600">{{ formatDate(duty.dutyStartDate) }}</td>
+                            <td class="px-6 py-3 text-sm text-slate-600">
+                              @if (duty.dutyTitle === 'RETIRED') {
+                                {{ formatDate(duty.dutyStartDate) }}
+                              } @else {
+                                {{ duty.dutyEndDate ? formatDate(duty.dutyEndDate) : 'Ongoing' }}
+                              }
+                            </td>
+                            <td class="px-6 py-3 text-center">
+                              <button
+                                (click)="openEditDutyModal(duty, $event)"
+                                class="px-3 py-1.5 bg-slate-600 text-white text-xs rounded-md hover:bg-slate-700"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <div class="px-6 py-8 text-center text-slate-500">
+                    <p>No duty history available for this astronaut.</p>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    @if (!isLoading()) {
+      <div class="text-center py-8 text-slate-500 bg-white rounded-lg border border-slate-200">
+        <p>No astronauts found matching your search.</p>
+      </div>
+    }
+  }
+
+  <!-- Create Person Modal -->
+  @if (showCreatePersonModal()) {
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" (click)="closeCreatePersonModal()">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">Create New Person</h3>
+
+        <div class="mb-4">
+          <label for="person-name" class="text-sm font-medium text-slate-900 mb-2 block">
+            Person Name
+          </label>
+          <input
+            id="person-name"
+            type="text"
+            placeholder="Enter person name..."
+            [value]="newPersonName()"
+            (input)="newPersonName.set($any($event.target).value)"
+            (keyup.enter)="createPerson()"
+            class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+
+        @if (errorMessage()) {
+          <div class="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm mb-4">
+            {{ errorMessage() }}
+          </div>
+        }
+
+        <div class="flex gap-2 justify-end">
+          <button
+            (click)="closeCreatePersonModal()"
+            class="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            (click)="createPerson()"
+            [disabled]="isCreatingPerson()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            @if (isCreatingPerson()) {
+              <span>Creating...</span>
+            } @else {
+              <span>Create</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Create Duty Modal -->
+  @if (showCreateDutyModal()) {
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" (click)="closeCreateDutyModal()">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">
+          Add Duty for {{ selectedPersonForDuty()?.name }}
+        </h3>
+
+        <div class="space-y-4 mb-4">
+          <div>
+            <label for="duty-rank" class="text-sm font-medium text-slate-900 mb-2 block">
+              Rank
+            </label>
+            <input
+              id="duty-rank"
+              type="text"
+              placeholder="e.g., Colonel, Major..."
+              [value]="dutyForm().rank"
+              (input)="updateDutyField('rank', $any($event.target).value)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label for="duty-title" class="text-sm font-medium text-slate-900 mb-2 block">
+              Duty Title
+            </label>
+            <input
+              id="duty-title"
+              type="text"
+              placeholder="e.g., Astronaut, Commander..."
+              [value]="dutyForm().dutyTitle"
+              (input)="updateDutyField('dutyTitle', $any($event.target).value)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label for="duty-start-date" class="text-sm font-medium text-slate-900 mb-2 block">
+              Start Date
+            </label>
+            <input
+              id="duty-start-date"
+              type="date"
+              [value]="dutyForm().dutyStartDate"
+              (input)="updateDutyField('dutyStartDate', $any($event.target).value)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        @if (errorMessage()) {
+          <div class="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm mb-4">
+            {{ errorMessage() }}
+          </div>
+        }
+
+        <div class="flex gap-2 justify-end">
+          <button
+            (click)="closeCreateDutyModal()"
+            class="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            (click)="createDuty()"
+            [disabled]="isCreatingDuty()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            @if (isCreatingDuty()) {
+              <span>Creating...</span>
+            } @else {
+              <span>Create Duty</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Edit Duty Modal -->
+  @if (showEditDutyModal()) {
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" (click)="closeEditDutyModal()">
+      <div class="bg-white rounded-lg p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">
+          Edit Duty
+        </h3>
+
+        <div class="space-y-4 mb-4">
+          <div>
+            <label for="edit-duty-rank" class="text-sm font-medium text-slate-900 mb-2 block">
+              Rank
+            </label>
+            <input
+              id="edit-duty-rank"
+              type="text"
+              placeholder="e.g., Colonel, Major..."
+              [value]="editDutyForm().rank"
+              (input)="updateEditDutyField('rank', $any($event.target).value)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label for="edit-duty-title" class="text-sm font-medium text-slate-900 mb-2 block">
+              Duty Title
+            </label>
+            <input
+              id="edit-duty-title"
+              type="text"
+              placeholder="e.g., Astronaut, Commander..."
+              [value]="editDutyForm().dutyTitle"
+              (input)="updateEditDutyField('dutyTitle', $any($event.target).value)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label for="edit-duty-start-date" class="text-sm font-medium text-slate-900 mb-2 block">
+              Start Date
+            </label>
+            <input
+              id="edit-duty-start-date"
+              type="date"
+              [value]="editDutyForm().dutyStartDate"
+              (input)="updateEditDutyField('dutyStartDate', $any($event.target).value)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label for="edit-duty-end-date" class="text-sm font-medium text-slate-900 mb-2 block">
+              End Date (Optional)
+            </label>
+            <input
+              id="edit-duty-end-date"
+              type="date"
+              [value]="editDutyForm().dutyEndDate"
+              (input)="updateEditDutyField('dutyEndDate', $any($event.target).value)"
+              class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            />
+            <p class="text-xs text-slate-500 mt-1">Leave empty for current duty</p>
+          </div>
+        </div>
+
+        @if (errorMessage()) {
+          <div class="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm mb-4">
+            {{ errorMessage() }}
+          </div>
+        }
+
+        <div class="flex gap-2 justify-end">
+          <button
+            (click)="closeEditDutyModal()"
+            class="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            (click)="updateDuty()"
+            [disabled]="isUpdatingDuty()"
+            class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            @if (isUpdatingDuty()) {
+              <span>Updating...</span>
+            } @else {
+              <span>Update Duty</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
